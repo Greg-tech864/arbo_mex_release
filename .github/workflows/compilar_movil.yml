@@ -1,0 +1,45 @@
+name: Compilar Android e iOS
+on:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+      - name: Instalar Flet y compilar APK
+        run: |
+          pip install flet==0.24.1
+          flet build apk --project "ARBO-MEX" --org "com.arbomex.app"
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARBO-MEX-Android
+          path: build/apk/app-release.apk
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar Flet y compilar iOS
+        run: |
+          pip install flet==0.24.1
+          flet build ios --project "ARBO-MEX" --org "com.arbomex.app" --no-codesign
+      - name: Guardar build iOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARBO-MEX-iOS
+          path: build/ios/iphoneos/
