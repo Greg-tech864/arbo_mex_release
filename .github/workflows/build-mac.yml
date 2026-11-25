@@ -67,16 +67,32 @@ jobs:
           pip install flet
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      - name: Parchear Flet para compilar iOS sin firma y conservar build
+        run: |
+          python3 -c '
+          import os, flet_cli
+          cli_dir = os.path.dirname(flet_cli.__file__)
+          for root, _, files in os.walk(cli_dir):
+              for f in files:
+                  if f.endswith(".py"):
+                      p = os.path.join(root, f)
+                      txt = open(p).read()
+                      if "\"ipa\"" in txt and "build" in txt:
+                          txt = txt.replace("[\"build\", \"ipa\"", "[\"build\", \"ios\", \"--no-codesign\"")
+                          txt = txt.replace("\x27build\x27, \x27ipa\x27", "\x27build\x27, \x27ios\x27, \x27--no-codesign\x27")
+                          open(p, "w").write(txt)
+          '
+
       - name: Compilar iOS sin firma
         run: |
-          flet build ipa --no-rich-output --flutter-build-args="--no-codesign" || true
+          flet build ipa --no-rich-output || true
 
       - name: Empaquetar .app a .ipa
         run: |
           mkdir -p Payload
-          find build -name "*.app" -maxdepth 5 -exec cp -r {} Payload/ \;
+          find / -name "Runner.app" 2>/dev/null -exec cp -r {} Payload/ \;
           if [ -z "$(ls -A Payload)" ]; then
-            echo "Error: No se generó el archivo .app"
+            echo "Error: No se encontró Runner.app"
             exit 1
           fi
           zip -r arbo_mex_release_ios.ipa Payload/
