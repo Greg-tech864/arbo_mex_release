@@ -77,20 +77,27 @@ jobs:
                   if f.endswith(".py"):
                       p = os.path.join(root, f)
                       txt = open(p).read()
-                      if "\"ipa\"" in txt and "build" in txt:
-                          txt = txt.replace("[\"build\", \"ipa\"", "[\"build\", \"ios\", \"--no-codesign\"")
-                          txt = txt.replace("\x27build\x27, \x27ipa\x27", "\x27build\x27, \x27ios\x27, \x27--no-codesign\x27")
+                      changed = False
+                      if "ipa" in txt:
+                          txt = txt.replace("\"ipa\"", "\"ios\", \"--no-codesign\"")
+                          txt = txt.replace("\x27ipa\x27", "\x27ios\x27, \x27--no-codesign\x27")
+                          changed = True
+                      if "shutil.rmtree" in txt:
+                          txt = txt.replace("shutil.rmtree", "pass # shutil.rmtree")
+                          changed = True
+                      if changed:
                           open(p, "w").write(txt)
+                          print("Parcheado:", p)
           '
 
       - name: Compilar iOS sin firma
         run: |
-          flet build ipa --no-rich-output || true
+          flet build ipa --no-rich-output -v
 
       - name: Empaquetar .app a .ipa
         run: |
           mkdir -p Payload
-          find / -name "Runner.app" 2>/dev/null -exec cp -r {} Payload/ \;
+          find /Users /var/folders -name "Runner.app" 2>/dev/null -exec cp -r {} Payload/ \;
           if [ -z "$(ls -A Payload)" ]; then
             echo "Error: No se encontró Runner.app"
             exit 1
