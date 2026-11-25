@@ -1,22 +1,42 @@
-name: Empaquetar para macOS
+name: Empaquetar Flet iOS (Sin firma)
 on: [workflow_dispatch]
 
 jobs:
-  build-macos:
+  build-ios-unsigned:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependencias y PyInstaller
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Instalar Flet y dependencias
         run: |
           pip install -r requirements.txt
-          pip install pyinstaller
-      - name: Generar ejecutable
-        run: pyinstaller --onefile --windowed tu_script.py
-      - name: Subir resultado
+          pip install flet
+
+      - name: Compilar proyecto iOS sin firma
+        run: |
+          flet build ipa --no-codesign || true
+          cd build/flutter
+          flutter build ios --release --no-codesign
+
+      - name: Empaquetar .app en un archivo .ipa
+        run: |
+          mkdir -p Payload
+          cp -r build/flutter/build/ios/iphoneos/Runner.app Payload/
+          zip -r MiApp-sin-firma.ipa Payload/
+
+      - name: Subir archivo .ipa
         uses: actions/upload-artifact@v4
         with:
-          name: app-macos
-          path: dist/
+          name: MiApp-iOS-Unsigned
+          path: MiApp-sin-firma.ipa
