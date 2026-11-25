@@ -1,8 +1,51 @@
-name: Empaquetar Flet iOS (Sin firma)
-on: [workflow_dispatch]
+name: Compilar App (Android e iOS)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
-  build-ios:
+  android:
+    name: Compilar Android (APK)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Configurar Java (Requerido por Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Instalar Flet y dependencias
+        run: |
+          pip install --upgrade pip
+          pip install flet
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Compilar APK
+        run: flet build apk --no-rich-output
+
+      - name: Guardar build Android
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-android
+          path: build/apk/*.apk
+
+  ios:
+    name: Compilar iOS sin firma (IPA)
     runs-on: macos-latest
     steps:
       - name: Descargar código
@@ -20,20 +63,26 @@ jobs:
 
       - name: Instalar Flet y dependencias
         run: |
+          pip install --upgrade pip
           pip install flet
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Compilar bundle sin firma con Flet
-        run: flet build ios-simulator --no-rich-output
+      - name: Compilar iOS sin firma
+        run: |
+          flet build ipa --no-rich-output --flutter-build-args="--no-codesign" || true
 
-      - name: Empaquetar .app en .ipa
+      - name: Empaquetar .app a .ipa
         run: |
           mkdir -p Payload
-          cp -r build/ios-simulator/*.app Payload/
-          zip -r MiApp-iOS.ipa Payload/
+          find build -name "*.app" -maxdepth 5 -exec cp -r {} Payload/ \;
+          if [ -z "$(ls -A Payload)" ]; then
+            echo "Error: No se generó el archivo .app"
+            exit 1
+          fi
+          zip -r arbo_mex_release_ios.ipa Payload/
 
-      - name: Subir resultado
+      - name: Guardar build iOS
         uses: actions/upload-artifact@v4
         with:
-          name: MiApp-iOS
-          path: MiApp-iOS.ipa
+          name: build-ios
+          path: arbo_mex_release_ios.ipa
