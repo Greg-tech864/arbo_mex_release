@@ -1,102 +1,22 @@
-name: Compilar Android e iOS
-
-on:
-  workflow_dispatch:
+name: Empaquetar para macOS
+on: [workflow_dispatch]
 
 jobs:
-  android:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Descargar código
-        uses: actions/checkout@v4
-
-      - name: Configurar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Configurar Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Configurar Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Instalar dependencias GTK
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            clang \
-            cmake \
-            ninja-build \
-            pkg-config \
-            libgtk-3-dev \
-            liblzma-dev
-
-      - name: Aceptar licencias Android
-        run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          flutter doctor --android-licenses <<<'y'
-          flutter doctor -v
-
-      - name: Instalar Flet
-        run: python -m pip install --upgrade flet==0.24.1
-
-      - name: Compilar APK
-        run: |
-          flet build apk \
-            --project arbo_mex \
-            --product "ARBO-MEX" \
-            --org "com.arbomex.app"
-
-      - name: Guardar APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ARBO-MEX-Android
-          path: build/apk/app-release.apk
-          if-no-files-found: error
-
-  ios:
+  build-macos:
     runs-on: macos-latest
-
     steps:
-      - name: Descargar código
-        uses: actions/checkout@v4
-
-      - name: Configurar Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Configurar Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Instalar Flet
-        run: python -m pip install --upgrade flet==0.24.1
-
-      - name: Compilar iOS sin firma
+          python-version: '3.11'
+      - name: Instalar dependencias y PyInstaller
         run: |
-          flet build ios \
-            --project arbo_mex \
-            --product "ARBO-MEX" \
-            --org "com.arbomex.app" \
-            --no-codesign
-
-      - name: Guardar build iOS
+          pip install -r requirements.txt
+          pip install pyinstaller
+      - name: Generar ejecutable
+        run: pyinstaller --onefile --windowed tu_script.py
+      - name: Subir resultado
         uses: actions/upload-artifact@v4
         with:
-          name: ARBO-MEX-iOS
-          path: build/ios/iphoneos/
-          if-no-files-found: error
+          name: app-macos
+          path: dist/
