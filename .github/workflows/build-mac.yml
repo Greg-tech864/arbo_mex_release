@@ -1,8 +1,8 @@
-name: Empaquetar Flet iOS (Sin firma forzada)
+name: Empaquetar Flet iOS (Sin firma)
 on: [workflow_dispatch]
 
 jobs:
-  build-ios-unsigned:
+  build-ios:
     runs-on: macos-latest
     steps:
       - name: Descargar código
@@ -23,29 +23,17 @@ jobs:
           pip install flet
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Generar proyecto Flutter con Flet (ignorando error de firma)
-        run: flet build ipa || true
+      - name: Compilar bundle sin firma con Flet
+        run: flet build ios-simulator --no-rich-output
 
-      - name: Compilar con Xcode desactivando firma a la fuerza
-        run: |
-          cd build/flutter/ios
-          xcodebuild -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -sdk iphoneos \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM=""
-
-      - name: Crear archivo .ipa manualmente
+      - name: Empaquetar .app en .ipa
         run: |
           mkdir -p Payload
-          cp -r build/flutter/build/ios/Release-iphoneos/Runner.app Payload/
-          zip -r MiApp-sin-firma.ipa Payload/
+          cp -r build/ios-simulator/*.app Payload/
+          zip -r MiApp-iOS.ipa Payload/
 
-      - name: Subir .ipa generado
+      - name: Subir resultado
         uses: actions/upload-artifact@v4
         with:
-          name: MiApp-iOS-Unsigned
-          path: MiApp-sin-firma.ipa
+          name: MiApp-iOS
+          path: MiApp-iOS.ipa
